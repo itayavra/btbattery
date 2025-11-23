@@ -10,8 +10,16 @@ import org.kde.config as KConfig
 PlasmoidItem {
     id: root
     
+    
     property var bluetoothDevices: []
     property var hiddenDevices: [] // List of MAC addresses to hide
+    
+    // Connection type enum
+    readonly property QtObject connectionType: QtObject {
+        readonly property int wired: 0
+        readonly property int bluetooth: 1
+        readonly property int otherWireless: 2
+    }
     
     // Prefer compact representation (icon in tray)
     preferredRepresentation: compactRepresentation
@@ -146,7 +154,7 @@ PlasmoidItem {
             var output = data["stdout"]
             var deviceInfo = parseDeviceInfo(output)
             
-            if (deviceInfo && deviceInfo.isWireless && deviceInfo.percentage >= 0) {
+            if (deviceInfo && deviceInfo.connectionType !== connectionType.wired && deviceInfo.percentage >= 0) {
                 pendingDevices.push(deviceInfo)
             }
             
@@ -204,24 +212,28 @@ PlasmoidItem {
             percentage: -1,
             type: "",
             icon: "input-mouse",
-            isWireless: false
+            connectionType: connectionType.wired
         }
         
         for (var i = 0; i < lines.length; i++) {
             var line = lines[i].trim()
             
-            // Check for wireless devices (Bluetooth, Xbox Wireless, etc.)
+            // Detect wireless devices and determine connection type
             if (line.indexOf("native-path:") !== -1) {
                 device.nativePath = line.split(":")[1].trim()
                 var path = line.toLowerCase()
-                // Include bluez (Bluetooth), gip (Xbox wireless), and other wireless protocols
+                
+                // Bluetooth devices have MAC addresses in their native path
+                var hasMacAddress = /[0-9a-f]{2}[:\-_][0-9a-f]{2}[:\-_][0-9a-f]{2}/.test(path)
+                
                 if (path.indexOf("bluez") !== -1 || 
                     path.indexOf("bluetooth") !== -1 ||
-                    path.indexOf("ps-controller") !== -1 ||
-                    path.indexOf("hid") !== -1 ||
-                    path.indexOf("gip") !== -1 || // Xbox Wireless dongle
-                    /[0-9a-f]{2}[:\-_][0-9a-f]{2}[:\-_][0-9a-f]{2}/.test(path)) {
-                    device.isWireless = true
+                    hasMacAddress) {
+                    device.connectionType = connectionType.bluetooth
+                }
+                // Non-Bluetooth wireless (e.g., Xbox controllers via wireless dongle)
+                else if (path.indexOf("gip") !== -1) {
+                    device.connectionType = connectionType.otherWireless
                 }
             }
             
@@ -440,16 +452,16 @@ PlasmoidItem {
                                         
                                         RowLayout {
                                             Layout.alignment: Qt.AlignVCenter
-                                            // spacing: 20
                                             
                                             PlasmaComponents.ToolButton {
-                                                icon.name: hiddenDevices.indexOf(modelData.serial) === -1 ? "view-visible" : "view-hidden"
-                                                text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide" : "Show"
+                                                visible: modelData.connectionType === connectionType.bluetooth
+                                                icon.name: "network-disconnect"
+                                                text: "Disconnect"
                                                 display: PlasmaComponents.AbstractButton.IconOnly
-                                                onClicked: toggleDeviceVisibility(modelData.serial)
+                                                onClicked: disconnectDevice(modelData.serial)
                                                 
                                                 PlasmaComponents.ToolTip {
-                                                    text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide from tray" : "Show in tray"
+                                                    text: "Disconnect device"
                                                 }
                                                 
                                                 MouseArea {
@@ -461,13 +473,13 @@ PlasmoidItem {
                                             }
                                             
                                             PlasmaComponents.ToolButton {
-                                                icon.name: "network-disconnect"
-                                                text: "Disconnect"
+                                                icon.name: hiddenDevices.indexOf(modelData.serial) === -1 ? "view-visible" : "view-hidden"
+                                                text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide" : "Show"
                                                 display: PlasmaComponents.AbstractButton.IconOnly
-                                                onClicked: disconnectDevice(modelData.serial)
+                                                onClicked: toggleDeviceVisibility(modelData.serial)
                                                 
                                                 PlasmaComponents.ToolTip {
-                                                    text: "Disconnect device"
+                                                    text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide from tray" : "Show in tray"
                                                 }
                                                 
                                                 MouseArea {
