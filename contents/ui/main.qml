@@ -338,7 +338,11 @@ PlasmoidItem {
         Layout.minimumWidth: Kirigami.Units.gridUnit * 25
         Layout.minimumHeight: Kirigami.Units.gridUnit * 10
         Layout.preferredWidth: Kirigami.Units.gridUnit * 30
-        Layout.preferredHeight: column.implicitHeight + Kirigami.Units.gridUnit * 2
+        Layout.maximumHeight: Kirigami.Units.gridUnit * 40
+        Layout.preferredHeight: Math.min(
+            column.implicitHeight + Kirigami.Units.gridUnit * 2,
+            Kirigami.Units.gridUnit * 40
+        )
         
         ColumnLayout {
             id: column
@@ -346,10 +350,34 @@ PlasmoidItem {
             anchors.margins: Kirigami.Units.largeSpacing
             spacing: Kirigami.Units.smallSpacing
             
-            PlasmaComponents.Label {
-                text: "Bluetooth Device Batteries"
-                font.bold: true
-                font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
+            // Header with title and refresh button
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                
+                PlasmaComponents.Label {
+                    text: "Bluetooth Device Batteries"
+                    font.bold: true
+                    font.pixelSize: Kirigami.Theme.defaultFont.pixelSize * 1.2
+                    Layout.fillWidth: true
+                }
+                
+                PlasmaComponents.ToolButton {
+                    icon.name: "view-refresh"
+                    text: "Refresh"
+                    display: PlasmaComponents.AbstractButton.IconOnly
+                    
+                    PlasmaComponents.ToolTip {
+                        text: "Refresh devices"
+                    }
+                    
+                    onClicked: {
+                        deviceCheckCount = 0
+                        deviceDetailsSource.pendingDevices = []
+                        deviceDetailsSource.processedCount = 0
+                        upowerSource.connectSource("upower -e")
+                    }
+                }
             }
             
             Repeater {
@@ -357,6 +385,7 @@ PlasmoidItem {
                 
                 ColumnLayout {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
                     spacing: Kirigami.Units.smallSpacing
                     
                     Item {
@@ -367,8 +396,8 @@ PlasmoidItem {
                             id: deviceRow
                             anchors.fill: parent
                             gap: Kirigami.Units.smallSpacing
-                            justifyContent: FlexboxLayout.JustifySpaceBetween
-                            alignContent: FlexboxLayout.AlignCenter
+                            // justifyContent: FlexboxLayout.JustifySpaceBetween
+                            // alignContent: FlexboxLayout.AlignCenter
                             alignItems: FlexboxLayout.AlignCenter
                             
                             Kirigami.Icon {
@@ -399,7 +428,7 @@ PlasmoidItem {
                             
                             FlexboxLayout {
                                 Layout.fillWidth: true
-                                Layout.fillHeight: true
+                                // Layout.fillHeight: true
                                 justifyContent: FlexboxLayout.JustifyEnd
                                 alignItems: FlexboxLayout.AlignCenter
                                 gap: Kirigami.Units.largeSpacing
@@ -411,6 +440,11 @@ PlasmoidItem {
                                         text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide" : "Show"
                                         display: PlasmaComponents.AbstractButton.IconOnly
                                         onClicked: toggleDeviceVisibility(modelData.serial)
+                                        
+                                        PlasmaComponents.ToolTip {
+                                            text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide from tray" : "Show in tray"
+                                        }
+                                        
                                         MouseArea {
                                             anchors.fill: parent
                                             hoverEnabled: true
@@ -424,6 +458,11 @@ PlasmoidItem {
                                         text: "Disconnect"
                                         display: PlasmaComponents.AbstractButton.IconOnly
                                         onClicked: disconnectDevice(modelData.serial)
+                                        
+                                        PlasmaComponents.ToolTip {
+                                            text: "Disconnect device"
+                                        }
+                                        
                                         MouseArea {
                                             anchors.fill: parent
                                             hoverEnabled: true
@@ -454,23 +493,6 @@ PlasmoidItem {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHLeft
                 color: Kirigami.Theme.disabledTextColor
-            }
-            
-            Item {
-                Layout.fillHeight: true
-            }
-            
-            PlasmaComponents.Button {
-                text: "Refresh"
-                icon.name: "view-refresh"
-                Layout.alignment: Qt.AlignHCenter
-                
-                onClicked: {
-                    deviceCheckCount = 0
-                    deviceDetailsSource.pendingDevices = []
-                    deviceDetailsSource.processedCount = 0
-                    upowerSource.connectSource("upower -e")
-                }
             }
         }
     }
