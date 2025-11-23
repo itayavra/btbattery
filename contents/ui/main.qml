@@ -10,15 +10,18 @@ import org.kde.config as KConfig
 PlasmoidItem {
     id: root
     
-    
     property var bluetoothDevices: []
     property var hiddenDevices: [] // List of MAC addresses to hide
     
     // Connection type enum
-    readonly property QtObject connectionType: QtObject {
-        readonly property int wired: 0
-        readonly property int bluetooth: 1
-        readonly property int otherWireless: 2
+    ConnectionType {
+        id: connectionType
+    }
+    
+    // Device parser
+    DeviceParser {
+        id: deviceParser
+        connectionTypes: connectionType
     }
     
     // Prefer compact representation (icon in tray)
@@ -152,7 +155,7 @@ PlasmoidItem {
             disconnectSource(sourceName)
             
             var output = data["stdout"]
-            var deviceInfo = parseDeviceInfo(output)
+            var deviceInfo = deviceParser.parseDeviceInfo(output)
             
             if (deviceInfo && deviceInfo.connectionType !== connectionType.wired && deviceInfo.percentage >= 0) {
                 pendingDevices.push(deviceInfo)
@@ -201,96 +204,6 @@ PlasmoidItem {
     
     function getDeviceDetails(devicePath) {
         deviceDetailsSource.connectSource("upower -i " + devicePath)
-    }
-    
-    function parseDeviceInfo(output) {
-        var lines = output.split("\n")
-        var device = {
-            name: "",
-            serial: "",
-            nativePath: "",
-            percentage: -1,
-            type: "",
-            icon: "input-mouse",
-            connectionType: connectionType.wired
-        }
-        
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim()
-            
-            // Detect wireless devices and determine connection type
-            if (line.indexOf("native-path:") !== -1) {
-                device.nativePath = line.split(":")[1].trim()
-                var path = line.toLowerCase()
-                
-                // Bluetooth devices have MAC addresses in their native path
-                var hasMacAddress = /[0-9a-f]{2}[:\-_][0-9a-f]{2}[:\-_][0-9a-f]{2}/.test(path)
-                
-                if (path.indexOf("bluez") !== -1 || 
-                    path.indexOf("bluetooth") !== -1 ||
-                    hasMacAddress) {
-                    device.connectionType = connectionType.bluetooth
-                }
-                // Non-Bluetooth wireless (e.g., Xbox controllers via wireless dongle)
-                else if (path.indexOf("gip") !== -1) {
-                    device.connectionType = connectionType.otherWireless
-                }
-            }
-            
-            // Get device serial/MAC address
-            if (line.indexOf("serial:") !== -1) {
-                device.serial = line.split(":").slice(1).join(":").trim()
-            }
-            
-            // Get device model/name
-            if (line.indexOf("model:") !== -1) {
-                device.name = line.split(":")[1].trim()
-            }
-            
-            // Get battery percentage
-            if (line.indexOf("percentage:") !== -1) {
-                var percentStr = line.split(":")[1].trim().replace("%", "")
-                device.percentage = parseInt(percentStr)
-            }
-            
-            // Determine device type and icon
-            var lowerLine = line.toLowerCase()
-            if (lowerLine.indexOf("gaming-input") !== -1 || 
-                lowerLine.indexOf("gaming") !== -1 || 
-                lowerLine.indexOf("controller") !== -1 || 
-                lowerLine.indexOf("gamepad") !== -1 ||
-                lowerLine.indexOf("dualsense") !== -1 ||
-                lowerLine.indexOf("dualshock") !== -1 ||
-                lowerLine.indexOf("xbox") !== -1) {
-                device.type = "gamepad"
-                device.icon = "input-gamepad"
-            } else if (lowerLine.indexOf("mouse") !== -1) {
-                device.type = "mouse"
-                device.icon = "input-mouse"
-            } else if (lowerLine.indexOf("keyboard") !== -1) {
-                device.type = "keyboard"
-                device.icon = "input-keyboard"
-            } else if (lowerLine.indexOf("headset") !== -1 || 
-                       lowerLine.indexOf("headphone") !== -1 ||
-                       lowerLine.indexOf("earbuds") !== -1) {
-                device.type = "headset"
-                device.icon = "audio-headset"
-            } else if (lowerLine.indexOf("phone") !== -1 ||
-                       lowerLine.indexOf("mobile") !== -1) {
-                device.type = "phone"
-                device.icon = "smartphone"
-            } else if (lowerLine.indexOf("tablet") !== -1) {
-                device.type = "tablet"
-                device.icon = "tablet"
-            }
-        }
-        
-        // Use native path as identifier if no serial/MAC (for Xbox wireless controllers)
-        if (!device.serial && device.nativePath) {
-            device.serial = device.nativePath
-        }
-        
-        return device
     }
     
     // Timer to refresh device list periodically
@@ -404,106 +317,101 @@ PlasmoidItem {
                     Repeater {
                         model: bluetoothDevices
                         
-                        Item {
+                        ColumnLayout {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: Kirigami.Units.gridUnit * 4
+                            spacing: 0
                             
-                            ColumnLayout {
-                                anchors.fill: parent
-                                spacing: 0
+                            Item {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Kirigami.Units.gridUnit * 4
+                                Layout.topMargin: Kirigami.Units.smallSpacing
+                                Layout.bottomMargin: Kirigami.Units.smallSpacing
                                 
-                                Item {
-                                    Layout.fillWidth: true
-                                    Layout.fillHeight: true
-                                    Layout.topMargin: Kirigami.Units.smallSpacing
-                                    Layout.bottomMargin: Kirigami.Units.smallSpacing
+                                RowLayout {
+                                    anchors.fill: parent
+                                    spacing: Kirigami.Units.smallSpacing
+
+                                    Kirigami.Icon {
+                                        source: modelData.icon
+                                        Layout.preferredWidth: Kirigami.Units.iconSizes.medium
+                                        Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                                        Layout.alignment: Qt.AlignVCenter
+                                    }
+                                    
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        Layout.alignment: Qt.AlignVCenter
+                                        spacing: 2
+                                        
+                                        PlasmaComponents.Label {
+                                            text: modelData.name || "Unknown Device"
+                                            font.bold: true
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                        
+                                        PlasmaComponents.Label {
+                                            text: modelData.serial
+                                            font.pixelSize: Kirigami.Theme.smallFont.pixelSize
+                                            color: Kirigami.Theme.disabledTextColor
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
+                                        }
+                                    }
                                     
                                     RowLayout {
-                                        anchors.fill: parent
-                                        spacing: Kirigami.Units.smallSpacing
-                 
-                                        Kirigami.Icon {
-                                            source: modelData.icon
-                                            Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                                            Layout.preferredHeight: Kirigami.Units.iconSizes.medium
-                                            Layout.alignment: Qt.AlignVCenter
-                                        }
+                                        Layout.alignment: Qt.AlignVCenter
                                         
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            Layout.alignment: Qt.AlignVCenter
-                                            spacing: 2
+                                        PlasmaComponents.ToolButton {
+                                            visible: modelData.connectionType === connectionType.bluetooth
+                                            icon.name: "network-disconnect"
+                                            text: "Disconnect"
+                                            display: PlasmaComponents.AbstractButton.IconOnly
+                                            onClicked: disconnectDevice(modelData.serial)
                                             
-                                            PlasmaComponents.Label {
-                                                text: modelData.name || "Unknown Device"
-                                                font.bold: true
-                                                Layout.fillWidth: true
-                                                elide: Text.ElideRight
+                                            PlasmaComponents.ToolTip {
+                                                text: "Disconnect device"
                                             }
                                             
-                                            PlasmaComponents.Label {
-                                                text: modelData.serial
-                                                font.pixelSize: Kirigami.Theme.smallFont.pixelSize
-                                                color: Kirigami.Theme.disabledTextColor
-                                                Layout.fillWidth: true
-                                                elide: Text.ElideRight
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onPressed: mouse.accepted = false
                                             }
                                         }
                                         
-                                        RowLayout {
-                                            Layout.alignment: Qt.AlignVCenter
+                                        PlasmaComponents.ToolButton {
+                                            icon.name: hiddenDevices.indexOf(modelData.serial) === -1 ? "view-visible" : "view-hidden"
+                                            text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide" : "Show"
+                                            display: PlasmaComponents.AbstractButton.IconOnly
+                                            onClicked: toggleDeviceVisibility(modelData.serial)
                                             
-                                            PlasmaComponents.ToolButton {
-                                                visible: modelData.connectionType === connectionType.bluetooth
-                                                icon.name: "network-disconnect"
-                                                text: "Disconnect"
-                                                display: PlasmaComponents.AbstractButton.IconOnly
-                                                onClicked: disconnectDevice(modelData.serial)
-                                                
-                                                PlasmaComponents.ToolTip {
-                                                    text: "Disconnect device"
-                                                }
-                                                
-                                                MouseArea {
-                                                    anchors.fill: parent
-                                                    hoverEnabled: true
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onPressed: mouse.accepted = false
-                                                }
+                                            PlasmaComponents.ToolTip {
+                                                text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide from tray" : "Show in tray"
                                             }
                                             
-                                            PlasmaComponents.ToolButton {
-                                                icon.name: hiddenDevices.indexOf(modelData.serial) === -1 ? "view-visible" : "view-hidden"
-                                                text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide" : "Show"
-                                                display: PlasmaComponents.AbstractButton.IconOnly
-                                                onClicked: toggleDeviceVisibility(modelData.serial)
-                                                
-                                                PlasmaComponents.ToolTip {
-                                                    text: hiddenDevices.indexOf(modelData.serial) === -1 ? "Hide from tray" : "Show in tray"
-                                                }
-                                                
-                                                MouseArea {
-                                                    anchors.fill: parent
-                                                    hoverEnabled: true
-                                                    cursorShape: Qt.PointingHandCursor
-                                                    onPressed: mouse.accepted = false
-                                                }
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onPressed: mouse.accepted = false
                                             }
-                                            
-                                            PlasmaComponents.Label {
-                                                text: modelData.percentage + "%"
-                                                font.bold: true
-                                                Layout.minimumWidth: Kirigami.Units.gridUnit * 2
-                                                horizontalAlignment: Text.AlignRight
-                                            }
+                                        }
+                                        
+                                        PlasmaComponents.Label {
+                                            text: modelData.percentage + "%"
+                                            font.bold: true
+                                            Layout.minimumWidth: Kirigami.Units.gridUnit * 2
+                                            horizontalAlignment: Text.AlignRight
                                         }
                                     }
                                 }
-                                
-                                Kirigami.Separator {
-                                    Layout.fillWidth: true
-                                    visible: index < bluetoothDevices.length - 1
-                                }
+                            }
+                            
+                            Kirigami.Separator {
+                                Layout.fillWidth: true
+                                visible: index < bluetoothDevices.length - 1
                             }
                         }
                     }
