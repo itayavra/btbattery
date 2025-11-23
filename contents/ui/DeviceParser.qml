@@ -34,9 +34,8 @@ QtObject {
                     hasMacAddress) {
                     device.connectionType = connectionTypes.bluetooth
                 }
-                // Non-Bluetooth wireless (e.g., Xbox controllers via wireless dongle)
                 else if (path.indexOf("gip") !== -1) {
-                    device.connectionType = connectionTypes.otherWireless
+                    device.connectionType = connectionTypes.wireless
                 }
             }
             
@@ -88,7 +87,7 @@ QtObject {
             }
         }
         
-        // Use native path as identifier if no serial/MAC (for Xbox wireless controllers)
+        // Use native path as identifier if no serial/MAC 
         if (!device.serial && device.nativePath) {
             device.serial = device.nativePath
         }

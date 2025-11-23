@@ -11,14 +11,12 @@ PlasmoidItem {
     id: root
     
     property var connectedDevices: []
-    property var hiddenDevices: [] // List of MAC addresses to hide
+    property var hiddenDevices: [] 
     
-    // Connection type enum
     ConnectionType {
         id: connectionType
     }
     
-    // Device parser
     DeviceParser {
         id: deviceParser
         connectionTypes: connectionType
@@ -88,7 +86,6 @@ PlasmoidItem {
     }
     
     function disconnectBluetoothDevice(serial) {
-        // Disconnect via bluetoothctl
         bluetoothCtlSource.connectSource("bluetoothctl disconnect " + serial)
     }
     
@@ -209,7 +206,7 @@ PlasmoidItem {
     // Timer to refresh device list periodically
     Timer {
         id: refreshTimer
-        interval: 5000 // 5 seconds
+        interval: 5000 
         running: true
         repeat: true
         
@@ -271,7 +268,6 @@ PlasmoidItem {
             anchors.margins: Kirigami.Units.largeSpacing
             spacing: Kirigami.Units.smallSpacing
             
-            // Header with title and refresh button
             RowLayout {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
@@ -301,7 +297,6 @@ PlasmoidItem {
                 }
             }
             
-            // Scrollable device list with fixed row heights
             PlasmaComponents.ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
