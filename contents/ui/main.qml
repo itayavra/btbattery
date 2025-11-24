@@ -34,24 +34,21 @@ PlasmoidItem {
         connectionTypes: connectionType
     }
     
-    // Prefer compact representation (icon in tray)
     preferredRepresentation: compactRepresentation
     
-    // Tooltip properties
     toolTipMainText: "Device Battery Monitor"
     toolTipSubText: "No devices"
     
     // Hide widget when no visible devices (except when user is configuring or panel is in edit mode)
     Plasmoid.status: {
-        // Always show widget when user is configuring it
         if (Plasmoid.userConfiguring) {
             return PlasmaCore.Types.ActiveStatus
         }
-        // Check for containment edit mode (for panel edit mode)
+
         if (Plasmoid.containment && Plasmoid.containment.corona && Plasmoid.containment.corona.editMode) {
             return PlasmaCore.Types.ActiveStatus
         }
-        // Otherwise, hide completely when no devices
+
         return hasVisibleDevices ? PlasmaCore.Types.ActiveStatus : PlasmaCore.Types.HiddenStatus
     }
     
