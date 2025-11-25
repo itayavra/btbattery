@@ -7,7 +7,7 @@
         ],
         "Category": "System Information",
         "Description": "Display battery percentage of connected devices in the system tray",
-        "Icon": "battery-monitor",
+        "Icon": "/icons/battery-monitor.png",
         "Id": "com.github.itayavra.btbattery",
         "Name": "Device Battery Monitor",
         "Version": "1.0",
