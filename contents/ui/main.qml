@@ -38,7 +38,7 @@ PlasmoidItem {
     
     preferredRepresentation: compactRepresentation
     
-    toolTipMainText: "PowerWatch"
+    toolTipMainText: "BatteryWatch"
     toolTipSubText: "No devices"
     
     // Hide widget when no visible devices (except when user is configuring or panel is in edit mode)

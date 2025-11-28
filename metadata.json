@@ -8,10 +8,10 @@
         "Category": "System Information",
         "Description": "Monitor battery levels of all connected devices",
         "Icon": "/icons/battery-monitor.png",
-        "Id": "com.github.itayavra.powerwatch",
-        "Name": "PowerWatch",
+        "Id": "com.github.itayavra.batterywatch",
+        "Name": "BatteryWatch",
         "Version": "1.0",
-        "Website": "https://github.com/itayavra/powerwatch"
+        "Website": "https://github.com/itayavra/batterywatch"
     },
     "KPackageStructure": "Plasma/Applet",
     "X-Plasma-API-Minimum-Version": "6.0"
